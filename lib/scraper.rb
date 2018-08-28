@@ -5,38 +5,39 @@ require 'nokogiri'
 class Scraper
 
   def self.scrape_index_page(index_url)
-    students = []
-    page = Nokogiri::HTML(open(index_url))
-    page.css("div.roster-cards-container").each do |card|
-      page.css(".student-card a").each do |student|
-        student_name = student.css(".student-name").text
-        student_location = student.css(".student-location").text
-        student_profile_url = "./fixtures/student-site/#{student.attribute('href')}"
-        students << {name: student_name, location: student_location, profile_url: student_profile_url}
-      end
+    get_page = Nokogiri::HTML(open(index_url))
+
+    scraped_students = []
+    get_page.css("div.student-card").each do |student|
+      scraped_students << {
+        :name => student.css("h4").text,
+        :location => student.css("p").text,
+        :profile_url => index_url + student.at("a").attributes["href"].value
+      }
     end
-    students
+      scraped_students
   end
 
   def self.scrape_profile_page(profile_url)
-    profile = Nokogiri::HTML(open(profile_url))
-    student_profile = {}
-      links = profile.css(".social-icon-container").children.css("a").map { |x| x.attribute('href').value}
-      links.each do |link|
-        if link.include?("twitter")
-          student_profile[:twitter] = link
-        elsif link.include?("linkedin")
-          student_profile[:linkedin] = link
-        elsif link.include?("github")
-          student_profile[:github] = link
-        else
-          student_profile[:blog] = link
-        end
-    end
-    student_profile[:profile_quote] = profile.css(".profile-quote").text
-    student_profile[:bio] = profile.css(".description-holder p").text
+    get_page = Nokogiri::HTML(open(profile_url))
 
+    student_profile = {
+      :profile_quote => get_page.css(".profile-quote").text,
+      :bio => get_page.css("p").text
+    }
+
+    get_page.css("div.social-icon-container a").each do |social|
+      case social.at("img").attributes["src"].value
+      when "../assets/img/twitter-icon.png"
+        student_profile[:twitter] = social.attributes["href"].value
+      when "../assets/img/linkedin-icon.png"
+        student_profile[:linkedin] = social.attributes["href"].value
+      when "../assets/img/github-icon.png"
+        student_profile[:github] = social.attributes["href"].value
+      when "../assets/img/rss-icon.png"
+        student_profile[:blog] = social.attributes["href"].value
+      end
+    end
     student_profile
   end
-
 end
